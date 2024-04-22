@@ -66,7 +66,7 @@ const getUserWithId = function (id) {
         })
         .catch(err => {
             console.error("Error executing query", err);
-            return null; // Return null on error
+            throw err; // throw the error
         });
 };
 
@@ -99,8 +99,40 @@ const addUser = function (user) {
  * @param {string} guest_id The id of the user.
  * @return {Promise<[{}]>} A promise to the reservations.
  */
+
 const getAllReservations = function (guest_id, limit = 10) {
-    return getAllProperties(null, 2);
+    const query = `
+        SELECT 
+            reservations.id, 
+            properties.title, 
+            properties.thumbnail_photo_url,
+            properties.cost_per_night, 
+            properties.number_of_bedrooms,
+            properties.number_of_bathrooms,
+            properties.parking_spaces,
+            reservations.start_date, 
+            AVG(property_reviews.rating) AS average_rating
+        FROM reservations
+        JOIN properties ON reservations.property_id = properties.id
+        LEFT JOIN property_reviews ON properties.id = property_reviews.property_id
+        WHERE reservations.guest_id = $1
+        GROUP BY properties.id, reservations.id
+        ORDER BY reservations.start_date
+        LIMIT $2;`;
+
+    return pool
+        .query(query, [guest_id, limit])
+        .then(res => {
+            if (res.rows.length === 0) {
+                throw new Error("No reservations found for this user."); // Throw error if no reservations found
+            } else {
+                return res.rows; // Return reservations
+            }
+        })
+        .catch(err => {
+            console.error("Error executing query", err);
+            throw err; // throw the error
+        });
 };
 
 /// Properties
