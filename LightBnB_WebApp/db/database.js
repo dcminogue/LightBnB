@@ -38,7 +38,6 @@ const getUserWithEmail = function (email) {
             }
         })
         .catch(err => {
-            console.error("Error executing query", err);
             throw err; // Rethrow the error
         });
 };
@@ -65,7 +64,6 @@ const getUserWithId = function (id) {
             }
         })
         .catch(err => {
-            console.error("Error executing query", err);
             throw err; // throw the error
         });
 };
@@ -87,7 +85,6 @@ const addUser = function (user) {
             }
         })
         .catch(err => {
-            console.error("Error executing query", err);
             throw err; // throw the error
         });
 };
@@ -130,7 +127,6 @@ const getAllReservations = function (guest_id, limit = 10) {
             }
         })
         .catch(err => {
-            console.error("Error executing query", err);
             throw err; // throw the error
         });
 };
@@ -143,15 +139,96 @@ const getAllReservations = function (guest_id, limit = 10) {
  * @param {*} limit The number of results to return.
  * @return {Promise<[{}]>}  A promise to the properties.
  */
+
 const getAllProperties = (options, limit = 10) => {
+    const queryParams = [];
+    let queryString = `
+        SELECT 
+            properties.*, 
+            AVG(property_reviews.rating) AS average_rating
+        FROM properties
+        LEFT JOIN property_reviews ON properties.id = property_reviews.property_id`;
+
+    // Check if a city has been passed in as an option
+    if (options.city) {
+        queryParams.push(`%${options.city}%`);
+        queryString += ` WHERE city LIKE $${queryParams.length}`;
+    }
+
+    // Check if an owner_id is passed in
+    if (options.owner_id) {
+        if (queryParams.length === 0) {
+            queryString += ` WHERE`;
+        } else {
+            queryString += ` AND`;
+        }
+        queryParams.push(options.owner_id);
+        queryString += ` owner_id = $${queryParams.length}`;
+    }
+
+    // Check if minimum_price_per_night and maximum_price_per_night are passed in
+    if (options.minimum_price_per_night && options.maximum_price_per_night) {
+        if (queryParams.length === 0) {
+            queryString += ` WHERE`;
+        } else {
+            queryString += ` AND`;
+        }
+        queryParams.push(options.minimum_price_per_night * 100); // Convert to cents
+        queryParams.push(options.maximum_price_per_night * 100); // Convert to cents
+        queryString += ` cost_per_night BETWEEN $${
+            queryParams.length - 1
+        } AND $${queryParams.length}`;
+    } else if (options.minimum_price_per_night) {
+        if (queryParams.length === 0) {
+            queryString += ` WHERE`;
+        } else {
+            queryString += ` AND`;
+        }
+        queryParams.push(options.minimum_price_per_night * 100); // Convert to cents
+        queryString += ` cost_per_night >= $${queryParams.length}`;
+    } else if (options.maximum_price_per_night) {
+        if (queryParams.length === 0) {
+            queryString += ` WHERE`;
+        } else {
+            queryString += ` AND`;
+        }
+        queryParams.push(options.maximum_price_per_night * 100); // Convert to cents
+        queryString += ` cost_per_night <= $${queryParams.length}`;
+    }
+
+    // Check if a minimum_rating is passed in
+    if (options.minimum_rating) {
+        if (queryParams.length === 0) {
+            queryString += ` WHERE`;
+        } else {
+            queryString += ` AND`;
+        }
+        queryParams.push(options.minimum_rating);
+        queryString += ` AVG(property_reviews.rating) >= $${queryParams.length}`;
+    }
+
+    queryString += `
+        GROUP BY properties.id`;
+
+    // HAVING clause for minimum rating
+    if (options.minimum_rating) {
+        queryString += `
+            HAVING AVG(property_reviews.rating) >= $${queryParams.length}`;
+    }
+
+    queryString += `
+        ORDER BY cost_per_night
+        LIMIT $${queryParams.length + 1};`;
+
+    queryParams.push(limit);
+
     return pool
-        .query(`SELECT * FROM properties LIMIT $1`, [limit])
+        .query(queryString, queryParams)
         .then(result => {
-            console.log(result.rows);
             return result.rows;
         })
         .catch(err => {
-            console.log(err.message);
+            throw err;
         });
 };
 
