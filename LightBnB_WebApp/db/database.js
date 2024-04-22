@@ -147,13 +147,15 @@ const getAllProperties = (options, limit = 10) => {
             properties.*, 
             AVG(property_reviews.rating) AS average_rating
         FROM properties
-        LEFT JOIN property_reviews ON properties.id = property_reviews.property_id`;
+        INNER JOIN property_reviews ON properties.id = property_reviews.property_id`;
 
+    // Check if options.city is defined
     if (options.city) {
         queryParams.push(`%${options.city}%`);
         queryString += ` WHERE city LIKE $${queryParams.length}`;
     }
 
+    // Check if other options are defined and add corresponding conditions
     if (options.owner_id) {
         if (queryParams.length === 0) {
             queryString += ` WHERE`;
@@ -175,8 +177,25 @@ const getAllProperties = (options, limit = 10) => {
         queryString += ` (cost_per_night >= $${
             queryParams.length - 1
         } AND cost_per_night <= $${queryParams.length})`;
+    } else if (options.minimum_price_per_night) {
+        if (queryParams.length === 0) {
+            queryString += ` WHERE`;
+        } else {
+            queryString += ` AND`;
+        }
+        queryParams.push(options.minimum_price_per_night * 100); // Convert to cents
+        queryString += ` cost_per_night >= $${queryParams.length}`;
+    } else if (options.maximum_price_per_night) {
+        if (queryParams.length === 0) {
+            queryString += ` WHERE`;
+        } else {
+            queryString += ` AND`;
+        }
+        queryParams.push(options.maximum_price_per_night * 100); // Convert to cents
+        queryString += ` cost_per_night <= $${queryParams.length}`;
     }
 
+    // GROUP BY and HAVING clauses
     queryString += `
         GROUP BY properties.id`;
 
@@ -186,12 +205,14 @@ const getAllProperties = (options, limit = 10) => {
         queryParams.push(options.minimum_rating);
     }
 
+    // ORDER BY, LIMIT, and final query construction
     queryString += `
         ORDER BY cost_per_night
         LIMIT $${queryParams.length + 1};`;
 
     queryParams.push(limit);
 
+    // Execute the query and handle the promise
     return pool
         .query(queryString, queryParams)
         .then(result => {
