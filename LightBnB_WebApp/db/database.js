@@ -149,13 +149,11 @@ const getAllProperties = (options, limit = 10) => {
         FROM properties
         LEFT JOIN property_reviews ON properties.id = property_reviews.property_id`;
 
-    // Check if a city has been passed in as an option
     if (options.city) {
         queryParams.push(`%${options.city}%`);
         queryString += ` WHERE city LIKE $${queryParams.length}`;
     }
 
-    // Check if an owner_id is passed in
     if (options.owner_id) {
         if (queryParams.length === 0) {
             queryString += ` WHERE`;
@@ -166,7 +164,6 @@ const getAllProperties = (options, limit = 10) => {
         queryString += ` owner_id = $${queryParams.length}`;
     }
 
-    // Check if minimum_price_per_night and maximum_price_per_night are passed in
     if (options.minimum_price_per_night && options.maximum_price_per_night) {
         if (queryParams.length === 0) {
             queryString += ` WHERE`;
@@ -175,45 +172,18 @@ const getAllProperties = (options, limit = 10) => {
         }
         queryParams.push(options.minimum_price_per_night * 100); // Convert to cents
         queryParams.push(options.maximum_price_per_night * 100); // Convert to cents
-        queryString += ` cost_per_night BETWEEN $${
+        queryString += ` (cost_per_night >= $${
             queryParams.length - 1
-        } AND $${queryParams.length}`;
-    } else if (options.minimum_price_per_night) {
-        if (queryParams.length === 0) {
-            queryString += ` WHERE`;
-        } else {
-            queryString += ` AND`;
-        }
-        queryParams.push(options.minimum_price_per_night * 100); // Convert to cents
-        queryString += ` cost_per_night >= $${queryParams.length}`;
-    } else if (options.maximum_price_per_night) {
-        if (queryParams.length === 0) {
-            queryString += ` WHERE`;
-        } else {
-            queryString += ` AND`;
-        }
-        queryParams.push(options.maximum_price_per_night * 100); // Convert to cents
-        queryString += ` cost_per_night <= $${queryParams.length}`;
-    }
-
-    // Check if a minimum_rating is passed in
-    if (options.minimum_rating) {
-        if (queryParams.length === 0) {
-            queryString += ` WHERE`;
-        } else {
-            queryString += ` AND`;
-        }
-        queryParams.push(options.minimum_rating);
-        queryString += ` AVG(property_reviews.rating) >= $${queryParams.length}`;
+        } AND cost_per_night <= $${queryParams.length})`;
     }
 
     queryString += `
         GROUP BY properties.id`;
 
-    // HAVING clause for minimum rating
     if (options.minimum_rating) {
         queryString += `
             HAVING AVG(property_reviews.rating) >= $${queryParams.length}`;
+        queryParams.push(options.minimum_rating);
     }
 
     queryString += `
@@ -227,6 +197,7 @@ const getAllProperties = (options, limit = 10) => {
         .then(result => {
             return result.rows;
         })
+
         .catch(err => {
             throw err;
         });
