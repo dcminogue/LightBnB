@@ -32,13 +32,13 @@ const getUserWithEmail = function (email) {
         .query(query, [email])
         .then(res => {
             if (res.rows.length === 0) {
-                return null; // User not found
+                return null;
             } else {
-                return res.rows[0]; // Return the first user found
+                return res.rows[0];
             }
         })
         .catch(err => {
-            throw err; // Rethrow the error
+            throw err;
         });
 };
 
@@ -58,13 +58,13 @@ const getUserWithId = function (id) {
         .query(query, [id])
         .then(res => {
             if (res.rows.length === 0) {
-                return null; // User not found
+                return null;
             } else {
-                return res.rows[0]; // Return the first user found
+                return res.rows[0];
             }
         })
         .catch(err => {
-            throw err; // Rethrow the error
+            throw err;
         });
 };
 
@@ -79,13 +79,13 @@ const addUser = function (user) {
         .query(query, [user.name, user.email, user.password])
         .then(res => {
             if (res.rows.length === 0) {
-                throw new Error("Failed to add user"); // Throw error if user was not added
+                throw new Error("Failed to add user");
             } else {
-                return res.rows[0]; // Return the newly added user
+                return res.rows[0];
             }
         })
         .catch(err => {
-            throw err; // Rethrow the error
+            throw err;
         });
 };
 
@@ -121,13 +121,13 @@ const getAllReservations = function (guest_id, limit = 10) {
         .query(query, [guest_id, limit])
         .then(res => {
             if (res.rows.length === 0) {
-                throw new Error("No reservations found for this user."); // Throw error if no reservations found
+                throw new Error("No reservations found for this user.");
             } else {
-                return res.rows; // Return reservations
+                return res.rows;
             }
         })
         .catch(err => {
-            throw err; // Rethrow the error
+            throw err;
         });
 };
 
@@ -144,18 +144,16 @@ const getAllProperties = function (options, limit = 10) {
     const queryParams = [];
     let queryString = `
         SELECT 
-           * 
-           
+            properties.*, 
+            AVG(property_reviews.rating) AS average_rating
         FROM properties
         LEFT JOIN property_reviews ON properties.id = property_reviews.property_id`;
 
-    // Check if options.city is defined
     if (options.city) {
         queryParams.push(`%${options.city}%`);
         queryString += ` WHERE city LIKE $${queryParams.length}`;
     }
 
-    // Check if other options are defined and add corresponding conditions
     if (options.owner_id) {
         if (queryParams.length === 0) {
             queryString += ` WHERE`;
@@ -172,8 +170,8 @@ const getAllProperties = function (options, limit = 10) {
         } else {
             queryString += ` AND`;
         }
-        queryParams.push(options.minimum_price_per_night * 100); // Convert to cents
-        queryParams.push(options.maximum_price_per_night * 100); // Convert to cents
+        queryParams.push(options.minimum_price_per_night * 100);
+        queryParams.push(options.maximum_price_per_night * 100);
         queryString += ` (cost_per_night >= $${
             queryParams.length - 1
         } AND cost_per_night <= $${queryParams.length})`;
@@ -183,7 +181,7 @@ const getAllProperties = function (options, limit = 10) {
         } else {
             queryString += ` AND`;
         }
-        queryParams.push(options.minimum_price_per_night * 100); // Convert to cents
+        queryParams.push(options.minimum_price_per_night * 100);
         queryString += ` cost_per_night >= $${queryParams.length}`;
     } else if (options.maximum_price_per_night) {
         if (queryParams.length === 0) {
@@ -191,34 +189,30 @@ const getAllProperties = function (options, limit = 10) {
         } else {
             queryString += ` AND`;
         }
-        queryParams.push(options.maximum_price_per_night * 100); // Convert to cents
+        queryParams.push(options.maximum_price_per_night * 100);
         queryString += ` cost_per_night <= $${queryParams.length}`;
     }
 
-    // GROUP BY and HAVING clauses
     queryString += `
         GROUP BY properties.id`;
 
     if (options.minimum_rating) {
         queryString += `
-            HAVING AVG(property_reviews.rating) >= $${queryParams.length}`;
+            HAVING AVG(property_reviews.rating) >= $${queryParams.length + 1}`;
         queryParams.push(options.minimum_rating);
     }
 
-    // ORDER BY, LIMIT, and final query construction
     queryString += `
         ORDER BY cost_per_night
         LIMIT $${queryParams.length + 1};`;
 
     queryParams.push(limit);
 
-    // Execute the query and handle the promise
     return pool
         .query(queryString, queryParams)
         .then(result => {
             return result.rows;
         })
-
         .catch(err => {
             throw err;
         });
@@ -259,14 +253,13 @@ const addProperty = function (property) {
         .query(query, values)
         .then(res => {
             if (res.rows.length === 0) {
-                throw new Error("Failed to add property."); // Throw error if property not added
+                throw new Error("Failed to add property.");
             } else {
-                // Return the saved property
                 return res.rows[0];
             }
         })
         .catch(err => {
-            throw err; // Rethrow the error
+            throw err;
         });
 };
 
