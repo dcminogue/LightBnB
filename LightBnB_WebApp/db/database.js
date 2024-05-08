@@ -140,14 +140,14 @@ const getAllReservations = function (guest_id, limit = 10) {
  * @return {Promise<[{}]>}  A promise to the properties.
  */
 
-const getAllProperties = (options, limit = 10) => {
+const getAllProperties = function (options, limit = 10) {
     const queryParams = [];
     let queryString = `
         SELECT 
-            properties.*, 
-            AVG(property_reviews.rating) AS average_rating
+           * 
+           
         FROM properties
-        INNER JOIN property_reviews ON properties.id = property_reviews.property_id`;
+        LEFT JOIN property_reviews ON properties.id = property_reviews.property_id`;
 
     // Check if options.city is defined
     if (options.city) {
@@ -266,7 +266,7 @@ const addProperty = function (property) {
             }
         })
         .catch(err => {
-            throw err; // Rethrow the error.
+            throw err; // Rethrow the error
         });
 };
 
