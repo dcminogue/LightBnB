@@ -133,6 +133,8 @@ const getAllReservations = function (guest_id, limit = 10) {
 
 /// Properties
 
+//
+
 /**
  * Get all properties.
  * @param {{}} options An object containing query options.
@@ -193,17 +195,18 @@ const getAllProperties = function (options, limit = 10) {
         queryString += ` cost_per_night <= $${queryParams.length}`;
     }
 
-    queryString += `
-        GROUP BY properties.id`;
-
     if (options.minimum_rating) {
-        queryString += `
-            HAVING AVG(property_reviews.rating) >= $${queryParams.length + 1}`;
+        if (queryParams.length === 0) {
+            queryString += ` WHERE`;
+        } else {
+            queryString += ` AND`;
+        }
+        queryString += ` property_reviews.rating >= $${queryParams.length + 1}`;
         queryParams.push(options.minimum_rating);
     }
 
     queryString += `
-        ORDER BY cost_per_night
+        ORDER BY average_rating DESC, cost_per_night
         LIMIT $${queryParams.length + 1};`;
 
     queryParams.push(limit);
