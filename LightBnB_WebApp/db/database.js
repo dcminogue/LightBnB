@@ -149,50 +149,31 @@ const getAllProperties = function (options, limit = 10) {
             properties.*, 
             AVG(property_reviews.rating) AS average_rating
         FROM properties
-        INNER JOIN property_reviews ON properties.id = property_reviews.property_id`;
+        INNER JOIN property_reviews ON properties.id = property_reviews.property_id
+        WHERE 1=1`;
 
     if (options.city) {
         queryParams.push(`%${options.city}%`);
-        queryString += ` WHERE city LIKE $${queryParams.length}`;
+        queryString += ` AND city LIKE $${queryParams.length}`;
     }
 
     if (options.owner_id) {
-        if (queryParams.length === 0) {
-            queryString += ` WHERE`;
-        } else {
-            queryString += ` AND`;
-        }
         queryParams.push(options.owner_id);
-        queryString += ` owner_id = $${queryParams.length}`;
+        queryString += ` AND owner_id = $${queryParams.length}`;
     }
 
     if (options.minimum_price_per_night && options.maximum_price_per_night) {
-        if (queryParams.length === 0) {
-            queryString += ` WHERE`;
-        } else {
-            queryString += ` AND`;
-        }
         queryParams.push(options.minimum_price_per_night * 100);
         queryParams.push(options.maximum_price_per_night * 100);
-        queryString += ` (cost_per_night >= $${
+        queryString += ` AND (cost_per_night >= $${
             queryParams.length - 1
         } AND cost_per_night <= $${queryParams.length})`;
     } else if (options.minimum_price_per_night) {
-        if (queryParams.length === 0) {
-            queryString += ` WHERE`;
-        } else {
-            queryString += ` AND`;
-        }
         queryParams.push(options.minimum_price_per_night * 100);
-        queryString += ` cost_per_night >= $${queryParams.length}`;
+        queryString += ` AND cost_per_night >= $${queryParams.length}`;
     } else if (options.maximum_price_per_night) {
-        if (queryParams.length === 0) {
-            queryString += ` WHERE`;
-        } else {
-            queryString += ` AND`;
-        }
         queryParams.push(options.maximum_price_per_night * 100);
-        queryString += ` cost_per_night <= $${queryParams.length}`;
+        queryString += ` AND cost_per_night <= $${queryParams.length}`;
     }
 
     queryString += `
